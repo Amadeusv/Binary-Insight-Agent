@@ -153,6 +153,29 @@ select.cyber-select option { background: #0d0d1a; color: #e0e0e8; }
   90%  { opacity: 0.6; }
   100% { transform: translateY(-10vh) scale(1); opacity: 0; }
 }
+
+/* Alert breathing — red border flash for the whole page */
+@keyframes alert-border-pulse {
+  0%, 100% { box-shadow: 0 0 0px rgba(255,51,102,0); }
+  20%      { box-shadow: 0 0 18px rgba(255,51,102,0.35), inset 0 0 18px rgba(255,51,102,0.08); }
+  40%      { box-shadow: 0 0 6px rgba(255,51,102,0.15), inset 0 0 6px rgba(255,51,102,0.04); }
+  60%      { box-shadow: 0 0 22px rgba(255,51,102,0.45), inset 0 0 22px rgba(255,51,102,0.10); }
+  80%      { box-shadow: 0 0 4px rgba(255,51,102,0.10), inset 0 0 4px rgba(255,51,102,0.02); }
+}
+.alert-active {
+  animation: alert-border-pulse 1.6s ease-in-out infinite;
+  border-color: rgba(255,51,102,0.35) !important;
+}
+
+/* Alert indicator dot */
+@keyframes alert-dot-flash {
+  0%, 100% { box-shadow: 0 0 4px rgba(255,51,102,0.4); background: #ff3366; }
+  50%      { box-shadow: 0 0 16px rgba(255,51,102,0.9), 0 0 32px rgba(255,51,102,0.4); background: #ff6688; }
+}
+.alert-dot {
+  animation: alert-dot-flash 0.8s ease-in-out infinite;
+  width: 8px; height: 8px; border-radius: 50%; background: #ff3366;
+}
 </style>
 </head>
 <body class="scanlines grid-bg">
@@ -340,23 +363,44 @@ const ASM_SAMPLES = {
 
 /* Agent console log entries */
 const AGENT_LOG_ENTRIES = [
-  { agent:'Orchestrator', type:'orch',  msg:'[+] 任务初始化完成 — 目标: suspicious_binary.exe', delay:200 },
-  { agent:'Orchestrator', type:'orch',  msg:'[+] 分配分析任务 → Decompiler / Deobfuscator / VulnAssess', delay:500 },
-  { agent:'Decompiler',   type:'decomp',msg:'[→] 开始静态反汇编... 检测到 PE32+ 格式', delay:800 },
-  { agent:'Decompiler',   type:'decomp',msg:'[→] 入口点: 0x1400010A0, 段数量: 4', delay:400 },
-  { agent:'Decompiler',   type:'decomp',msg:'[→] 解析 IAT (导入地址表)... 发现敏感函数: <span class="log-highlight">VirtualAlloc</span>, <span class="log-highlight">GetProcAddress</span>', delay:600 },
-  { agent:'Deobfuscator', type:'deobf', msg:'[~] 检测到控制流混淆特征 — 匹配 OLLVM 模式', delay:700 },
-  { agent:'Deobfuscator', type:'deobf', msg:'[~] 应用控制流平坦化还原算法 (D-810) ... 还原 3 个基本块', delay:900 },
-  { agent:'Deobfuscator', type:'deobf', msg:'[~] 发现字符串加密 — 使用 XOR 0xAA 异或混淆', delay:500 },
-  { agent:'Deobfuscator', type:'deobf', msg:'[~] 成功解密 12 个字符串常量', delay:400 },
-  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 行为链分析: VirtualAlloc → WriteProcessMemory → CreateThread', delay:800 },
-  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 判定: 疑似 <span class="log-highlight">Process Injection (T1055)</span> 技术', delay:600 },
-  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 关联 MITRE ATT&CK: T1055.002 (Portable Executable Injection)', delay:500 },
-  { agent:'Orchestrator', type:'orch',  msg:'[√] 第一轮分析完成 — 风险评分: <span class="log-highlight">78 / 100</span>', delay:900 },
-  { agent:'Orchestrator', type:'orch',  msg:'[→] 启动深度语义分析... 结合反汇编 + 反混淆结果交叉验证', delay:700 },
-  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 发现反调试特征: <span class="log-highlight">ptrace(PTRACE_TRACEME)</span> + exit()', delay:600 },
-  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 研判结论: 建议标记为 <span class="log-highlight">高危恶意样本</span>', delay:500 },
-  { agent:'Orchestrator', type:'orch',  msg:'[√] 全链路分析结束 — 生成最终报告...', delay:1000 },
+  { agent:'Orchestrator', type:'orch',  msg:'[+] 任务初始化完成 — 目标: suspicious_binary.exe', delay:300, alert:false },
+  { agent:'Orchestrator', type:'orch',  msg:'[+] 分配分析任务 → Decompiler / Deobfuscator / VulnAssess', delay:600, alert:false },
+  { agent:'Decompiler',   type:'decomp',msg:'[→] 开始静态反汇编... 检测到 PE32+ 格式', delay:900, alert:false },
+  { agent:'Decompiler',   type:'decomp',msg:'[→] 入口点: 0x1400010A0, 段数量: 4', delay:500, alert:false },
+  { agent:'Decompiler',   type:'decomp',msg:'[→] 解析 IAT (导入地址表)... 发现敏感函数: <span class="log-highlight">VirtualAlloc</span>, <span class="log-highlight">GetProcAddress</span>', delay:700, alert:true },
+  { agent:'Deobfuscator', type:'deobf', msg:'[~] 检测到控制流混淆特征 — 匹配 OLLVM 模式', delay:800, alert:false },
+  { agent:'Deobfuscator', type:'deobf', msg:'[~] 应用控制流平坦化还原算法 (D-810) ... 还原 3 个基本块', delay:1000, alert:false },
+  { agent:'Deobfuscator', type:'deobf', msg:'[~] 发现字符串加密 — 使用 XOR 0xAA 异或混淆', delay:600, alert:false },
+  { agent:'Deobfuscator', type:'deobf', msg:'[~] 成功解密 12 个字符串常量', delay:500, alert:false },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 行为链分析: VirtualAlloc → WriteProcessMemory → CreateThread', delay:900, alert:true },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 判定: 疑似 <span class="log-highlight">Process Injection (T1055)</span> 技术', delay:700, alert:true },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 关联 MITRE ATT&CK: T1055.002 (Portable Executable Injection)', delay:600, alert:true },
+  { agent:'Orchestrator', type:'orch',  msg:'[√] 第一轮分析完成 — 风险评分: <span class="log-highlight">78 / 100</span>', delay:1000, alert:false },
+  { agent:'Orchestrator', type:'orch',  msg:'[→] 启动深度语义分析... 结合反汇编 + 反混淆结果交叉验证', delay:800, alert:false },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 发现反调试特征: <span class="log-highlight">ptrace(PTRACE_TRACEME)</span> + exit()', delay:700, alert:true },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[!] 研判结论: 建议标记为 <span class="log-highlight">高危恶意样本</span>', delay:600, alert:true },
+  { agent:'Orchestrator', type:'orch',  msg:'[√] 全链路分析结束 — 生成最终报告...', delay:1200, alert:false },
+];
+
+/* Live Monitoring 无限巡检语料池 */
+const LIVE_MONITORING_POOL = [
+  { agent:'Orchestrator', type:'orch', msg:'[LIVE] 心跳检测正常 — 3 个 Agent 均在位, 延迟: 12ms', alert:false },
+  { agent:'Orchestrator', type:'orch', msg:'[LIVE] 监控内存分页情况... .text 段页表项 47/47 正常', alert:false },
+  { agent:'Decompiler',   type:'decomp',msg:'[LIVE] 正在遍历 .text 段指令流... 当前偏移: 0x1A4F, 未发现新异常', alert:false },
+  { agent:'Decompiler',   type:'decomp',msg:'[LIVE] 二次扫描 IAT... 新增可疑引用: NtAllocateVirtualMemory @ 0x1400010E6', alert:true },
+  { agent:'Deobfuscator', type:'deobf', msg:'[LIVE] 监控控制流图变化... 基本块拓扑稳定, 无新混淆注入', alert:false },
+  { agent:'Deobfuscator', type:'deobf', msg:'[LIVE] 熵值扫描: .data 段熵 7.83 — 接近加密阈值, 持续观察中', alert:false },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[LIVE] 尝试对 0x1400010E6 处注入探测 payload... 返回访问违例 (符合预期)', alert:false },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[LIVE] ⚠️ 检测到异常内存访问模式 — 疑似 Heap Spray 预备行为', alert:true },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[LIVE] ⚠️ HIGH RISK 行为关联: NtAllocateVirtualMemory + NtWriteVirtualMemory + NtCreateThreadEx', alert:true },
+  { agent:'Orchestrator', type:'orch',  msg:'[LIVE] 沙箱环境状态: 文件系统隔离 ✓ 网络隔离 ✓ 注册表虚拟化 ✓', alert:false },
+  { agent:'Decompiler',   type:'decomp',msg:'[LIVE] 函数边界重新校验... 检测到 3 个未被识别的尾部调用 (tail-call)', alert:false },
+  { agent:'Deobfuscator', type:'deobf', msg:'[LIVE] 符号执行引擎空闲 — 等待新指令流注入', alert:false },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[LIVE] MITRE ATT&CK 关联引擎已更新至 v15.1 — 重新映射中...', alert:false },
+  { agent:'Orchestrator', type:'orch',  msg:'[LIVE] 资源占用: CPU 4.2% | 内存 287MB | 句柄数 413', alert:false },
+  { agent:'Decompiler',   type:'decomp',msg:'[LIVE] 正在解码 .rdata 段字符串引用... 进度: 78%', alert:false },
+  { agent:'Deobfuscator', type:'deobf', msg:'[LIVE] 控制流图节点数: 312 → 异常新增 2 个节点, 正在验证...', alert:false },
+  { agent:'VulnAssess',   type:'vuln',  msg:'[LIVE] δ-风险增量: +3 → 当前动态评分 81/100', alert:true },
 ];
 
 // ================================================================
@@ -364,14 +408,14 @@ const AGENT_LOG_ENTRIES = [
 // ================================================================
 
 /* ---------- Header ---------- */
-function Header() {
+function Header({ alertActive }) {
   return (
-    <header className="flex items-center justify-between px-6 py-3 border-b border-cyber-border bg-cyber-bg/95 backdrop-blur-sm relative z-10">
+    <header className={`flex items-center justify-between px-6 py-3 border-b bg-cyber-bg/95 backdrop-blur-sm relative z-10 transition-all duration-300 ${alertActive ? 'border-[#ff3366]/50' : 'border-cyber-border'}`}>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <rect x="0" y="0" width="28" height="28" rx="6" fill="#0d0d1a" stroke="#00f0ff" strokeWidth="1.2"/>
-            <path d="M6 20 L14 8 L22 20" stroke="#00f0ff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="0" y="0" width="28" height="28" rx="6" fill="#0d0d1a" stroke={alertActive ? '#ff3366' : '#00f0ff'} strokeWidth="1.2"/>
+            <path d="M6 20 L14 8 L22 20" stroke={alertActive ? '#ff3366' : '#00f0ff'} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
             <circle cx="14" cy="16" r="1.5" fill="#ff00ff"/>
           </svg>
           <div>
@@ -381,15 +425,24 @@ function Header() {
         </div>
       </div>
       <div className="flex items-center gap-4 text-[11px]">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-cyber-green pulse-glow"></span>
-          <span className="text-cyber-green">Engine Online</span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-cyber-cyan animate-pulse"></span>
-          <span className="text-cyber-cyan">3 Agents Active</span>
-        </span>
-        <span className="text-cyber-muted border-l border-cyber-border pl-4">Decompiler · Deobfuscator · VulnAssess</span>
+        {alertActive ? (
+          <span className="flex items-center gap-1.5">
+            <div className="alert-dot"></div>
+            <span className="text-cyber-red font-semibold tracking-wider">⚠ THREAT DETECTED</span>
+          </span>
+        ) : (
+          <>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyber-green pulse-glow"></span>
+              <span className="text-cyber-green">Engine Online</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyber-cyan animate-pulse"></span>
+              <span className="text-cyber-cyan">3 Agents Active</span>
+            </span>
+            <span className="text-cyber-muted border-l border-cyber-border pl-4">Decompiler · Deobfuscator · VulnAssess</span>
+          </>
+        )}
       </div>
     </header>
   );
@@ -466,44 +519,140 @@ function highlightAsm(code) {
 }
 
 /* ---------- Middle Panel: Agent Console ---------- */
-function ConsolePanel() {
-  const [visibleLogs, setVisibleLogs] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [complete, setComplete] = useState(false);
+function ConsolePanel({ onAlert }) {
+  const [logs, setLogs] = useState([]);
+  const [typingLine, setTypingLine] = useState(null);
+  const [typingText, setTypingText] = useState('');
+  const [mode, setMode] = useState('init'); // 'init' | 'scripted' | 'live'
   const containerRef = useRef(null);
-  const idxRef = useRef(0);
-  const timerRef = useRef(null);
+  const scriptedIdxRef = useRef(0);
+  const charIdxRef = useRef(0);
+  const stepTimerRef = useRef(null);
+  const liveTimerRef = useRef(null);
+  const liveSeqRef = useRef(0);
 
-  const addNext = useCallback(() => {
-    if (idxRef.current >= AGENT_LOG_ENTRIES.length) {
-      setIsRunning(false);
-      setComplete(true);
-      return;
-    }
-    setVisibleLogs(prev => [...prev, {...AGENT_LOG_ENTRIES[idxRef.current], id: idxRef.current}]);
-    idxRef.current++;
-    if (idxRef.current < AGENT_LOG_ENTRIES.length) {
-      timerRef.current = setTimeout(addNext, AGENT_LOG_ENTRIES[idxRef.current]?.delay || 500);
-    } else {
-      timerRef.current = setTimeout(addNext, 1000);
-    }
-  }, []);
+  /* Typewriter speed: 15-25ms per char */
+  const typeSpeed = useCallback(() => 12 + Math.floor(Math.random() * 14), []);
 
-  const start = () => {
-    setVisibleLogs([]);
-    setComplete(false);
-    idxRef.current = 0;
-    setIsRunning(true);
-    timerRef.current = setTimeout(addNext, 300);
-  };
-
-  useEffect(() => { start(); return () => clearTimeout(timerRef.current); }, []);
-
-  useEffect(() => {
+  /* Scroll to bottom */
+  const scrollDown = useCallback(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [visibleLogs]);
+  }, []);
+
+  /* ---- Typewriter: type one character ---- */
+  const typeChar = useCallback((line) => {
+    charIdxRef.current++;
+    const partial = line.msg.substring(0, charIdxRef.current);
+    setTypingText(partial);
+    scrollDown();
+
+    if (charIdxRef.current >= line.msg.length) {
+      /* Line complete — flush to logs */
+      setTypingLine(null);
+      setTypingText('');
+      setLogs(prev => [...prev, { ...line, id: line.id || (scriptedIdxRef.current + '_' + Date.now()) }]);
+      if (line.alert && onAlert) onAlert(true, line.msg);
+      scrollDown();
+      return true; // done
+    }
+    return false; // still typing
+  }, [onAlert, scrollDown]);
+
+  /* ---- Start typing a line ---- */
+  const startTypingLine = useCallback((line) => {
+    charIdxRef.current = 0;
+    setTypingLine(line);
+    setTypingText('');
+    const speed = typeSpeed();
+    const interval = setInterval(() => {
+      const done = typeChar(line);
+      if (done) clearInterval(interval);
+    }, speed);
+    return interval;
+  }, [typeChar, typeSpeed]);
+
+  /* ---- Process next scripted entry ---- */
+  const processScripted = useCallback(() => {
+    if (scriptedIdxRef.current >= AGENT_LOG_ENTRIES.length) {
+      /* All scripted done — enter live monitoring */
+      setMode('live');
+      return;
+    }
+    const entry = AGENT_LOG_ENTRIES[scriptedIdxRef.current];
+    scriptedIdxRef.current++;
+    const typingInterval = startTypingLine({ ...entry, id: 's_' + scriptedIdxRef.current });
+
+    /* After typing finishes + entry.delay, go next */
+    const totalChars = entry.msg.length;
+    const typeDuration = totalChars * typeSpeed() + 100; // rough estimate
+    stepTimerRef.current = setTimeout(() => {
+      clearInterval(typingInterval);
+      processScripted();
+    }, typeDuration + (entry.delay || 500));
+  }, [startTypingLine, typeSpeed]);
+
+  /* ---- Generate a live monitoring entry ---- */
+  const generateLiveEntry = useCallback(() => {
+    const pool = LIVE_MONITORING_POOL;
+    const idx = Math.floor(Math.random() * pool.length);
+    liveSeqRef.current++;
+    const entry = { ...pool[idx], id: 'live_' + liveSeqRef.current + '_' + Date.now() };
+    startTypingLine(entry);
+  }, [startTypingLine]);
+
+  /* ---- Start / Restart ---- */
+  const start = useCallback(() => {
+    /* Clean up all timers */
+    clearTimeout(stepTimerRef.current);
+    clearInterval(liveTimerRef.current);
+    setLogs([]);
+    setTypingLine(null);
+    setTypingText('');
+    setMode('scripted');
+    scriptedIdxRef.current = 0;
+    charIdxRef.current = 0;
+    liveSeqRef.current = 0;
+    if (onAlert) onAlert(false, '');
+
+    /* Kick off scripted sequence */
+    stepTimerRef.current = setTimeout(() => processScripted(), 400);
+  }, [processScripted, onAlert]);
+
+  /* ---- Live monitoring loop ---- */
+  useEffect(() => {
+    if (mode !== 'live') return;
+    /* Generate first live entry immediately, then every 3-5s */
+    const scheduleNext = () => {
+      const delay = 3000 + Math.random() * 2000;
+      return setTimeout(() => {
+        generateLiveEntry();
+        liveTimerRef.current = scheduleNext();
+      }, delay);
+    };
+    liveTimerRef.current = setTimeout(() => {
+      generateLiveEntry();
+      liveTimerRef.current = scheduleNext();
+    }, 1500);
+    return () => clearTimeout(liveTimerRef.current);
+  }, [mode, generateLiveEntry]);
+
+  /* ---- Mount: auto-start ---- */
+  useEffect(() => {
+    start();
+    return () => {
+      clearTimeout(stepTimerRef.current);
+      clearInterval(liveTimerRef.current);
+    };
+  }, []);
+
+  /* ---- Clear alert after 2.5s ---- */
+  useEffect(() => {
+    if (!onAlert) return;
+    /* Each time a new log with alert:true is flushed, a short-lived alert fires.
+       The parent handles the timed clear. We just propagate. */
+  }, [logs]);
 
   const agentNames = {
     decomp: 'Decompiler',
@@ -517,6 +666,8 @@ function ConsolePanel() {
     vuln:   'text-cyber-red',
     orch:   'text-cyber-yellow',
   };
+
+  const isRunning = mode === 'scripted' || mode === 'live';
 
   return (
     <div className="glass-panel flex flex-col h-full overflow-hidden">
@@ -533,40 +684,59 @@ function ConsolePanel() {
           {isRunning && (
             <span className="flex items-center gap-1 text-[10px] text-cyber-magenta">
               <span className="w-1.5 h-1.5 rounded-full bg-cyber-magenta animate-pulse"></span>
-              Processing...
+              {mode === 'live' ? 'LIVE MONITORING' : 'Processing...'}
             </span>
+          )}
+          {mode === 'live' && (
+            <div className="alert-dot" title="LIVE"></div>
           )}
           <button
             onClick={start}
             className="px-3 py-1 text-[10px] border border-cyber-magenta/40 rounded text-cyber-magenta hover:bg-cyber-magenta/10 transition-colors"
           >
-            {complete ? '↻ REPLAY' : isRunning ? '⟳ RESTART' : '▶ START'}
+            {mode === 'live' ? '↻ RESTART' : mode === 'scripted' ? '⟳ RESTART' : '▶ START'}
           </button>
         </div>
       </div>
 
       {/* Log area */}
       <div ref={containerRef} className="flex-1 overflow-auto p-4 font-mono text-[11.5px] leading-relaxed">
-        {visibleLogs.length === 0 && (
+        {logs.length === 0 && !typingLine && (
           <div className="text-cyber-muted text-center mt-8 animate-pulse">Initializing analysis engine...</div>
         )}
-        {visibleLogs.map((entry, i) => (
-          <div key={i} className="animate-slide flex gap-2 py-0.5">
+
+        {/* Completed log lines */}
+        {logs.map((entry, i) => (
+          <div key={entry.id || i} className="flex gap-2 py-0.5 opacity-90">
             <span className={`shrink-0 ${agentColors[entry.type]}`}>
               [{agentNames[entry.type].padEnd(12)}]
             </span>
             <span className="text-cyber-white/85" dangerouslySetInnerHTML={{ __html: entry.msg }} />
           </div>
         ))}
-        {complete && (
-          <div className="mt-3 pt-3 border-t border-cyber-border/50">
-            <div className="flex items-center gap-2 text-cyber-green text-[12px]">
-              <span>█</span>
-              <span>Analysis pipeline complete. 3/3 agents finished successfully.</span>
+
+        {/* Typing line (typewriter in progress) */}
+        {typingLine && (
+          <div className="flex gap-2 py-0.5">
+            <span className={`shrink-0 ${agentColors[typingLine.type]}`}>
+              [{agentNames[typingLine.type].padEnd(12)}]
+            </span>
+            <span className="text-cyber-white">
+              <span dangerouslySetInnerHTML={{ __html: typingText }} />
+              <span className="cursor-blink text-cyber-cyan" style={{animation:'blink 0.6s step-end infinite'}}>▌</span>
+            </span>
+          </div>
+        )}
+
+        {/* Live monitoring banner (shown once) */}
+        {mode === 'live' && (
+          <div className="mt-2 pt-2 border-t border-cyber-border/50">
+            <div className="flex items-center gap-2 text-cyber-green text-[11px]">
+              <span className="animate-pulse">◉</span>
+              <span>LIVE MONITORING ACTIVE — 持续巡检中...</span>
             </div>
           </div>
         )}
-        {isRunning && <span className="cursor-blink text-cyber-cyan text-[11px]"></span>}
       </div>
     </div>
   );
@@ -663,9 +833,20 @@ function RiskPanel() {
 
 /* ---------- Main Layout ---------- */
 function App() {
+  const [alertActive, setAlertActive] = useState(false);
+  const alertTimerRef = useRef(null);
+
+  const handleAlert = useCallback((active, msg) => {
+    setAlertActive(active);
+    if (active) {
+      clearTimeout(alertTimerRef.current);
+      alertTimerRef.current = setTimeout(() => setAlertActive(false), 2500);
+    }
+  }, []);
+
   return (
-    <div className="flex flex-col h-screen">
-      <Header />
+    <div className={`flex flex-col h-screen ${alertActive ? 'alert-active' : ''}`}>
+      <Header alertActive={alertActive} />
       <main className="flex-1 grid grid-cols-[300px_1fr_320px] gap-0 overflow-hidden relative z-10">
         {/* Left: Disassembly */}
         <div className="p-2 pl-3">
@@ -673,7 +854,7 @@ function App() {
         </div>
         {/* Middle: Console */}
         <div className="p-2">
-          <ConsolePanel />
+          <ConsolePanel onAlert={handleAlert} />
         </div>
         {/* Right: Risk */}
         <div className="p-2 pr-3">
